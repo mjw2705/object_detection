@@ -12,11 +12,20 @@ for set in ['train', 'val']:
 
     f = open(f'2007_{set}.csv', 'w', encoding='utf-8', newline='')
     writer = csv.writer(f)
-    writer.writerow(['img_path', 'Bbox', 'class'])
+    writer.writerow(['img_path', 'img_size', 'Bbox', 'class'])
 
     for fids in file_id:
         tree = ET.parse(f'{DB_path}/Annotations/{fids}.xml')
         root = tree.getroot()
+
+        img_size = []
+        size = root.find("size")
+        width = int(size.find("width").text)
+        height = int(size.find("height").text)
+        depth = int(size.find("depth").text)
+
+        img_size.append(f'{width} {height} {depth}')
+        str_size = ' '.join(img_size)
 
         str_bboxs, str_ids = '', ''
         bboxs, ids = [], []
@@ -37,7 +46,7 @@ for set in ['train', 'val']:
 
         str_bboxs = ','.join(bboxs)
         str_ids = ','.join(ids)
-        writer.writerow([f'JPEGImages/{fids}.jpg', str_bboxs, str_ids])
+        writer.writerow([f'JPEGImages/{fids}.jpg', str_size, str_bboxs, str_ids])
 
     f.close()
 
