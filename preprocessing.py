@@ -16,7 +16,7 @@ anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
                            [116, 90], [156, 198], [373, 326]]).float() / 416
 
-DB_path = 'C:/Users/mjw27/Desktop/object_dectection/data/ex'
+DB_path = './/data/VOC2007_trainval'
 classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
 
