@@ -6,20 +6,21 @@ import torch
 def get_absolute_yolo_box(y_pred, valid_anchors_wh, num_classes):
     t_xy, t_wh, objectness, classes = torch.split(y_pred, (2, 2, 1, num_classes), dim=-1)
 
+    b_xy = torch.sigmoid(t_xy)
     objectness = torch.sigmoid(objectness)
     classes = torch.sigmoid(classes)
     bbox_rel = torch.cat((t_xy, t_wh), dim=-1)
 
     grid_size = y_pred.shape[1]
-    C_xy = torch.meshgrid(torch.arange(grid_size), torch.arange(grid_size))
-    C_xy = torch.stack(C_xy, dim=-1)
-    C_xy = torch.unsqueeze(C_xy, 2)
+    C_xy = torch.meshgrid(torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device),
+                          torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device))
+    C_xy = torch.stack(C_xy, dim=-1).unsqueeze_(2)
 
-    b_xy = torch.sigmoid(t_xy) + C_xy
+    b_xy = b_xy + C_xy
     b_xy = b_xy / float(grid_size)  # 정규화
     b_wh = torch.exp(t_wh) * valid_anchors_wh
 
-    bbox_abs = torch.cat((b_xy, b_wh), dim=-1)
+    bbox_abs = torch.cat((b_xy.float(), b_wh.float()), dim=-1)
 
     return bbox_abs, objectness, classes, bbox_rel
 
@@ -30,8 +31,9 @@ def get_relative_yolo_box(y_true, valid_anchors_wh, num_classes):
     bbox_abs = torch.cat((b_xy, b_wh), dim=-1)
 
     grid_size = y_true.shape[1]
-    C_xy = torch.meshgrid(torch.arange(grid_size), torch.arange(grid_size))
-    C_xy = torch.stack(C_xy, dim=-1).unsqueeze(2)
+    C_xy = torch.meshgrid(torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device),
+                          torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device))
+    C_xy = torch.stack(C_xy, dim=-1).unsqueeze_(2)
 
     b_xy = y_true[..., 0:2]
     b_wh = y_true[..., 2:4]

@@ -1,18 +1,24 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 
 from Vgg16 import VGG16
 from Darkent53 import Darkconv, Darknet53
 from utils import get_absolute_yolo_box, get_relative_yolo_box, xywh_to_x1x2y1y2, broadcast_iou
+from preprocess import CustomDataset
 
 
 anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
-                           [116, 90], [156, 198], [373, 326]]).float() / 416
+                           [116, 90], [156, 198], [373, 326]]).float().cuda() / 416
+
+anchors_wh_mask = torch.tensor([[[10, 13], [16, 30], [33, 23]],
+                                [[30, 61], [62, 45], [59, 119]],
+                                [[116, 90], [156, 198], [373, 326]]]).float().cuda() / 416
 
 
 class YoloV3(nn.Module):
-    def __init__(self, num_classes, backbone=Darknet53):
+    def __init__(self, num_classes, backbone=Darknet53()):
         super(YoloV3, self).__init__()
         self.num_classes = num_classes
         self.backbone = backbone
@@ -69,9 +75,9 @@ class YoloV3(nn.Module):
             nn.Conv2d(in_channels=256, out_channels=final_filter, kernel_size=1)
         )
 
-    def forward(self, inputs):
+    def forward(self, inputs, training):
         # y0, y1, y2
-        x_s, x_m, x_l = self.backbone
+        x_s, x_m, x_l = self.backbone(inputs)
 
         x = self.large_5dbl(x_l)
         y_large = self.large_feature(x)
@@ -96,9 +102,9 @@ class YoloV3(nn.Module):
         y_medium = y_medium.view(y_medium_shape[0], -1, 3, y_medium_shape[-2], y_medium_shape[-1]).permute(0, -1, -2, 2, 1)
         y_large = y_large.view(y_large_shape[0], -1, 3, y_large_shape[-2], y_large_shape[-1]).permute(0, -1, -2, 2, 1)
 
-        # if training:
-        #     return y_small, y_medium, y_large
-        #
+        if training:
+            return y_small, y_medium, y_large
+
         box_small = get_absolute_yolo_box(y_small, anchors_wh[0:3], self.num_classes)
         box_medium = get_absolute_yolo_box(y_medium, anchors_wh[3:6], self.num_classes)
         box_large = get_absolute_yolo_box(y_large, anchors_wh[6:9], self.num_classes)
@@ -120,6 +126,7 @@ class Yololoss(nn.Module):
         pred_box_abs, pred_obj, pred_class, pred_box_rel = get_absolute_yolo_box(y_pred,
                                                                                  self.valid_anchors_wh,
                                                                                  self.num_classes)
+        print(pred_box_abs)
         pred_box_abs = xywh_to_x1x2y1y2(pred_box_abs)
         pred_xy_rel = torch.sigmoid(pred_box_rel[..., 0:2])
         pred_wh_rel = pred_box_rel[..., 2:4]
@@ -146,7 +153,7 @@ class Yololoss(nn.Module):
         return xy_loss + wh_loss + class_loss + obj_loss, (xy_loss, wh_loss, class_loss, obj_loss)
 
     def calc_xywh_loss(self, true, pred, true_obj, weight):
-        loss = torch.sum(torch.square(true, pred), dim=-1)
+        loss = torch.sum(torch.square(true - pred), dim=-1)
         true_obj = torch.squeeze(true_obj, dim=-1)
         loss = loss * true_obj * weight
         loss = torch.sum(loss, dim=(1, 2, 3)) * self.lambda_coord
@@ -198,20 +205,35 @@ class Yololoss(nn.Module):
 
 
 def main():
-    inputs = torch.randn(1, 3, 416, 416)
+    # DB_path = './data/VOC2007_trainval'
+    # csv_file = '2007_train.csv'
+    DB_path = './data/ex'
+    csv_file = 'ex_train.csv'
 
-    model = YoloV3(20)
-    outputs = model(inputs)
-    y_small, y_medium, y_large = outputs
+    inputs = torch.randn(1, 3, 416, 416).cuda()
+    num_classes = 20
 
-    print(y_small[0].shape)
-    print(y_small[1].shape)
-    print(y_small[2].shape)
-    print(y_small[3].shape)
+    model = YoloV3(num_classes).cuda()
 
-    # loss = Yololoss(10, anchors_wh[0])
-    # y_pred = model(inputs)
-    # loss1, loss_breakdonw = loss(label, y_pred)
+    # outputs = model(inputs, training=False)
+    # y_small, y_medium, y_large = outputs
+    # print(y_small[0].shape)
+    # print(y_small[1].shape)
+    # print(y_small[2].shape)
+    # print(y_small[3].shape)
+
+    dataset = CustomDataset(DB_path=DB_path, csv_file=csv_file, num_classes=num_classes)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+
+    loss1 = Yololoss(num_classes, anchors_wh_mask[0]).cuda()
+
+    for batch, data in enumerate(dataloader):
+        image, label = data
+        y_pred = model(image.cuda(), training=True)
+
+        total_loss, each_loss = loss1(label[0], y_pred[0])
+
+        print(total_loss)
 
 
 if __name__ == '__main__':
