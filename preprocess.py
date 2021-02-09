@@ -17,7 +17,7 @@ from torchvision import transforms
 
 anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
-                           [116, 90], [156, 198], [373, 326]]).float() / 416
+                           [116, 90], [156, 198], [373, 326]]).float().cuda() / 416
 
 # DB_path = './data/VOC2007_trainval'
 # csv_file = '2007_train.csv'
@@ -38,17 +38,20 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
+        try:
+            img_path = os.path.join(DB_path, self.label_csv.iloc[idx, 0])
+            image = cv2.resize(cv2.imread(img_path), self.output_shape) / 255
+            image = torch.from_numpy(image).permute(2, 0, 1).float()
 
-        img_path = os.path.join(DB_path, self.label_csv.iloc[idx, 0])
-        image = cv2.resize(cv2.imread(img_path), self.output_shape) / 255
-        image = torch.from_numpy(image).permute(2, 0, 1).float()
+        except Exception as e:
+            print("Invalid")
 
         bboxes, classes = self.parse_y_features(idx)
 
         label = (
-            self.preprocess_label_for_one_class(bboxes, classes, 52, torch.tensor([0, 1, 2])),
-            self.preprocess_label_for_one_class(bboxes, classes, 26, torch.tensor([3, 4, 5])),
-            self.preprocess_label_for_one_class(bboxes, classes, 13, torch.tensor([6, 7, 8]))
+            self.preprocess_label_for_one_class(bboxes, classes, 52, torch.tensor([0, 1, 2]).cuda()),
+            self.preprocess_label_for_one_class(bboxes, classes, 26, torch.tensor([3, 4, 5]).cuda()),
+            self.preprocess_label_for_one_class(bboxes, classes, 13, torch.tensor([6, 7, 8]).cuda())
         )
 
         return image, label
@@ -80,13 +83,13 @@ class CustomDataset(Dataset):
 
     # class, bbox의 주석에 하나의 스케일에 대해 원하는 형식으로 전처리(grid, anchor, x, y, w, h, obj, one-hot class.. etc)
     def preprocess_label_for_one_class(self, bbox, classes, grid_size, valid_anchor):
-        y = torch.zeros((grid_size, grid_size, 3, 5 + self.num_classes))
+        y = torch.zeros((grid_size, grid_size, 3, 5 + self.num_classes)).cuda()
         anchor_idx = self.find_best_anchor(bbox)
 
         num_boxes = classes.shape[0]
         for i in range(num_boxes):
-            curr_class = torch.tensor(classes[i]).float()
-            curr_box = torch.tensor(bbox[i]).float()
+            curr_class = torch.tensor(classes[i]).cuda().float()
+            curr_box = torch.tensor(bbox[i]).cuda().float()
             curr_anchor = anchor_idx[i]
 
             # 앵커는 현재 그리드 사이즈에 맞는 것만 사용, 인덱스 3개로 조정
@@ -100,8 +103,8 @@ class CustomDataset(Dataset):
                 # grid cell의 index
                 grid_cell_xy = curr_box_xy // float(1 / grid_size)
                 # gird[y][x][anchor] 형태 = (tx, ty, bw, bh, obj, class)
-                index = torch.tensor([grid_cell_xy[1], grid_cell_xy[0], adjusted_anchor_idx]).int()
-                update = torch.cat((curr_box_xy, curr_box_wh, torch.tensor([1.0]).float(), curr_class), dim=0)
+                index = torch.tensor([grid_cell_xy[1], grid_cell_xy[0], adjusted_anchor_idx]).int().cuda()
+                update = torch.cat((curr_box_xy, curr_box_wh, torch.tensor([1.0]).cuda().float(), curr_class), dim=0)
 
                 # gird cell 하나에 대한 anchor 3개
                 y[index[0]][index[1]][index[2]] = update
@@ -111,7 +114,7 @@ class CustomDataset(Dataset):
     # input은 (num_boxes, 4)인 ground truth box
     # gt box와 anchor box의 iou가 가장 큰 anchor 구하기
     def find_best_anchor(self, bbox):
-        box_wh = torch.from_numpy(bbox[..., 2:4] - bbox[..., 0:2]).float()
+        box_wh = torch.from_numpy(bbox[..., 2:4] - bbox[..., 0:2]).float().cuda()
         box_wh = box_wh.unsqueeze(1).repeat(1, anchors_wh.shape[0], 1).float()  # anchors_wh.shape[0] = 9
 
         intersection = torch.min(box_wh[..., 0], anchors_wh[..., 0]) * torch.min(box_wh[..., 1], anchors_wh[..., 1])
