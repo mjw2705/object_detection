@@ -75,6 +75,7 @@ class CustomDataset(Dataset):
         labels = torch.arange(self.num_classes)
         one_hot = torch.nn.functional.one_hot(labels)
         clss = self.label_csv.iloc[idx, 3]
+        clss = str(clss)
         clss = list(map(int, clss.split(',')))
         cls = one_hot[clss]
         cls = np.array(cls)
