@@ -19,16 +19,18 @@ anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
                            [116, 90], [156, 198], [373, 326]]).float() / 416
 
-DB_path = './data/VOC2007_trainval'
-classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
-csv_file = '2007_train.csv'
+# DB_path = './data/VOC2007_trainval'
+# csv_file = '2007_train.csv'
+DB_path = './data/ex'
+csv_file = 'ex_train.csv'
 
 
 class CustomDataset(Dataset):
-    def __init__(self, num_classes, output_shape=(416, 416)):
+    def __init__(self, DB_path, csv_file, num_classes, output_shape=(416, 416)):
         self.label_csv = pd.read_csv(f'{csv_file}')
         self.num_classes = num_classes
         self.output_shape = output_shape
+        self.DB_path = DB_path
 
     def __len__(self):
         return len(self.label_csv)
@@ -37,7 +39,7 @@ class CustomDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path = os.path.join(f'{DB_path}', self.label_csv.iloc[idx, 0])
+        img_path = os.path.join(DB_path, self.label_csv.iloc[idx, 0])
         image = cv2.resize(cv2.imread(img_path), self.output_shape) / 255
         image = torch.from_numpy(image).permute(2, 0, 1).float()
 
@@ -123,13 +125,17 @@ class CustomDataset(Dataset):
 
 
 if __name__=='__main__':
-    dataset = CustomDataset(20)
-    image, label = dataset[100]
-
-    print(image)
-
-
+    dataset = CustomDataset(DB_path, csv_file, 20)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+
+    for batch, data in enumerate(dataloader):
+        image, label = data
+
+        print(image.shape, label[0].shape, label[1].shape, label[2].shape)
+
+
+
+
 
 
 
