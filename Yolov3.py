@@ -126,7 +126,6 @@ class Yololoss(nn.Module):
         pred_box_abs, pred_obj, pred_class, pred_box_rel = get_absolute_yolo_box(y_pred,
                                                                                  self.valid_anchors_wh,
                                                                                  self.num_classes)
-        print(pred_box_abs)
         pred_box_abs = xywh_to_x1x2y1y2(pred_box_abs)
         pred_xy_rel = torch.sigmoid(pred_box_rel[..., 0:2])
         pred_wh_rel = pred_box_rel[..., 2:4]
