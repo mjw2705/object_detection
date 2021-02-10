@@ -8,16 +8,17 @@ from Yolov3 import anchors_wh, anchors_wh_mask
 from preprocess import CustomDataset
 
 
-BATCH_SIZE = 8
-EPOCH = 1000
+BATCH_SIZE = 1
+EPOCH = 100
 
 
 def main():
-    DB_path = './data/VOC2007_trainval'
-    csv_file = '2007_train.csv'
+    # DB_path = './data/VOC2007_trainval/'
+    # csv_file = '2007_train.csv'
 
-    # DB_path = './data/ex'
-    # csv_file = 'ex_train.csv'
+    DB_path = './data/ex'
+    csv_file = 'ex_train.csv'
+
     pth_dir = './models/'
 
     # # 학습했던 모델 불러오기
