@@ -127,28 +127,42 @@ class Yololoss(nn.Module):
                                                                                  self.valid_anchors_wh,
                                                                                  self.num_classes)
         pred_box_abs = xywh_to_x1x2y1y2(pred_box_abs)
-        pred_xy_rel = torch.sigmoid(pred_box_rel[..., 0:2])
+        pred_xy_rel = pred_box_rel[..., 0:2]
         pred_wh_rel = pred_box_rel[..., 2:4]
+        # print(f'pred_box_abs: {pred_box_abs.shape}')
+        # print(f'pred_xy_rel: {pred_xy_rel.shape}')
+        # print(f'pred_wh_rel: {pred_wh_rel.shape}')
 
         # loss 계산에 필요
         true_box_rel, true_obj, true_class, true_box_abs = get_relative_yolo_box(y_true,
                                                                                  self.valid_anchors_wh,
                                                                                  self.num_classes)
+
+        print(true_obj.shape)
         true_box_abs = xywh_to_x1x2y1y2(true_box_abs)
         true_xy_rel = true_box_rel[..., 0:2]
         true_wh_rel = true_box_rel[..., 2:4]
 
         true_wh_abs = true_box_abs[..., 2:4]
+        # print(f'true_box_abs: {true_box_abs.shape}')
+        # print(f'true_box_rel: {true_box_rel.shape}')
+        # print(f'true_obj_rel: {true_obj.shape}')
 
         # w, h를 통해 작은 box detect를 위한 조정
         weight = 2 - true_wh_abs[..., 0] * true_wh_abs[..., 1]
 
         xy_loss = self.calc_xywh_loss(true_xy_rel, pred_xy_rel, true_obj, weight)
         wh_loss = self.calc_xywh_loss(true_wh_rel, pred_wh_rel, true_obj, weight)
-        ignore_mask = self.calc_ignore_mask(true_obj, true_box_abs, pred_box_abs)
-        obj_loss = self.calc_obj_loss(true_obj, pred_obj, ignore_mask)
         class_loss = self.calc_class_loss(true_obj, true_class, pred_class)
+        ignore_mask = self.calc_ignore_mask(true_box_abs, pred_box_abs, true_obj)
+        # print(f'ignore_mask: {ignore_mask.shape}')
+        obj_loss = self.calc_obj_loss(true_obj, pred_obj, ignore_mask)
 
+        # print(f'xy_loss : {xy_loss}')
+        # print(f'wh_loss : {wh_loss}')
+        # print(f'class_loss : {class_loss}')
+        # print(f'ignore_mask : {ignore_mask}')
+        print(f'obj_loss : {obj_loss}')
         return xy_loss + wh_loss + class_loss + obj_loss, (xy_loss, wh_loss, class_loss, obj_loss)
 
     def calc_xywh_loss(self, true, pred, true_obj, weight):
@@ -159,18 +173,29 @@ class Yololoss(nn.Module):
 
         return loss
 
-    def calc_ignore_mask(self, true_obj, true_box, pred_box):
+    def calc_ignore_mask(self, true_box, pred_box, true_obj):
         # true_box, pred_box는 [xmin, ymin, xmax, ymax]
         obj_mask = torch.squeeze(true_obj, dim=-1)
+
+        # print(f'true: {true_box.shape}')
+        # print(f'pred: {pred_box.shape}')
+        # print(f't_obj: {obj_mask}')
 
         best_iou = []
         for x in zip(pred_box, true_box, obj_mask):
             # obj_mask가 true(1)인 true_box만 mask에 넣는다.
-            mask = x[1][x[2].bool()]
-            if mask.size(0) is not 0:
-                best_iou.append(broadcast_iou(x[0], mask))
+            masks = x[1][x[2].bool()]
+            # print(f'mask: {masks}')
+            # print(f'true_box: {true_box.shape}')
+
+            if masks.size(0) is not 0:
+                # for mask in masks:
+                    # print(f'predbox: {x[0].shape}')
+                    # print(f'truebox: {mask.shape}')
+                best_iou.append(broadcast_iou(x[0], masks))
             else:
                 best_iou.append(torch.zeros(true_box.shape[1:4]).cuda())
+
         best_iou = torch.stack(best_iou)
 
         ignore_mask = (best_iou < self.ignore_thresh).float()
@@ -180,12 +205,15 @@ class Yololoss(nn.Module):
         return ignore_mask
 
     def calc_obj_loss(self, true_obj, pred_obj, ignore_mask):
+        print(f'calc_obj_loss {"=" * 100}')
         obj_entropy = self.binary_cross_entropy(pred_obj, true_obj)
         obj_loss = obj_entropy * true_obj
         noobj_loss = (1 - true_obj) * obj_entropy * ignore_mask
 
         obj_loss = torch.sum(obj_loss, dim=(1, 2, 3, 4))
         noobj_loss = torch.sum(noobj_loss, dim=(1, 2, 3, 4)) * self.lambda_noobj
+
+        print()
 
         return obj_loss + noobj_loss
 
@@ -224,13 +252,14 @@ def main():
     dataset = CustomDataset(DB_path=DB_path, csv_file=csv_file, num_classes=num_classes)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-    loss1 = Yololoss(num_classes, anchors_wh_mask[0]).cuda()
+    loss1 = Yololoss(num_classes, anchors_wh_mask[2]).cuda()
 
     for batch, data in enumerate(dataloader):
         image, label = data
+        # print(label.shape)
         y_pred = model(image.cuda(), training=True)
 
-        total_loss, each_loss = loss1(label[0], y_pred[0])
+        total_loss, each_loss = loss1(label[2], y_pred[2])
 
         print(total_loss)
 

@@ -19,7 +19,9 @@ anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
                            [116, 90], [156, 198], [373, 326]]).float().cuda() / 416
 
-# DB_path = './data/VOC2007_trainval'
+classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
+
+# DB_path = './data/VOC2007_trainval/'
 # csv_file = '2007_train.csv'
 DB_path = './data/ex'
 csv_file = 'ex_train.csv'
@@ -104,8 +106,8 @@ class CustomDataset(Dataset):
                 # grid cell의 index
                 grid_cell_xy = curr_box_xy // float(1 / grid_size)
                 # gird[y][x][anchor] 형태 = (tx, ty, bw, bh, obj, class)
-                index = torch.tensor([grid_cell_xy[1], grid_cell_xy[0], adjusted_anchor_idx]).int().cuda()
-                update = torch.cat((curr_box_xy, curr_box_wh, torch.tensor([1.0]).cuda().float(), curr_class), dim=0)
+                index = torch.tensor([grid_cell_xy[1], grid_cell_xy[0], adjusted_anchor_idx.item()]).int().cuda()
+                update = torch.cat((curr_box_xy, curr_box_wh, torch.tensor([1.0]).float().cuda(), curr_class), dim=0)
 
                 # gird cell 하나에 대한 anchor 3개
                 y[index[0]][index[1]][index[2]] = update
