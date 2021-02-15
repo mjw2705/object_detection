@@ -7,9 +7,10 @@ def get_absolute_yolo_box(y_pred, valid_anchors_wh, num_classes):
     t_xy, t_wh, objectness, classes = torch.split(y_pred, (2, 2, 1, num_classes), dim=-1)
 
     b_xy = torch.sigmoid(t_xy)
+    b_wh = t_wh
     objectness = torch.sigmoid(objectness)
     classes = torch.sigmoid(classes)
-    bbox_rel = torch.cat((t_xy, t_wh), dim=-1)
+    bbox_rel = torch.cat((b_xy, b_wh), dim=-1)
 
     grid_size = y_pred.shape[1]
     grid_x, grid_y = torch.meshgrid(torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device),
@@ -18,7 +19,7 @@ def get_absolute_yolo_box(y_pred, valid_anchors_wh, num_classes):
 
     b_xy = b_xy + C_xy
     b_xy = b_xy / float(grid_size)  # 정규화
-    b_wh = torch.exp(t_wh) * valid_anchors_wh
+    b_wh = torch.exp(b_wh) * valid_anchors_wh
 
     bbox_abs = torch.cat((b_xy.float(), b_wh.float()), dim=-1)
 
