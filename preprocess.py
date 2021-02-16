@@ -19,8 +19,6 @@ anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
                            [116, 90], [156, 198], [373, 326]]).float().cuda() / 416
 
-classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
-
 # DB_path = './data/VOC2007_trainval/'
 # csv_file = '2007_train.csv'
 DB_path = './data/ex'
@@ -76,8 +74,7 @@ class CustomDataset(Dataset):
 
         labels = torch.arange(self.num_classes)
         one_hot = torch.nn.functional.one_hot(labels)
-        clss = self.label_csv.iloc[idx, 3]
-        clss = str(clss)
+        clss = str(self.label_csv.iloc[idx, 3])
         clss = list(map(int, clss.split(',')))
         cls = one_hot[clss]
         cls = np.array(cls)
