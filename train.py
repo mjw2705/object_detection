@@ -9,7 +9,7 @@ from preprocess import CustomDataset
 
 
 BATCH_SIZE = 1
-EPOCH = 100
+EPOCH = 1000
 
 
 def main():
@@ -47,7 +47,7 @@ def main():
         lowest_loss = state['loss']
     else:
         init_epoch = 0
-        lowest_loss = 0.01
+        lowest_loss = 900
 
     print(f'init_epoch: {init_epoch}')
     print(f'lowest_loss: {lowest_loss}')
@@ -118,7 +118,6 @@ def train_one_epoch(model, loss_object, dataloader, optimizer, use_cuda):
         epoch_obj_loss += ((total_obj_loss.item()) / len_dataloader)
 
     print(f'total_loss: {epoch_total_loss:.4f},  xy: {epoch_xy_loss:.4f}, wh: {epoch_wh_loss:.4f}, class: {epoch_class_loss:.4f}, obj: {epoch_obj_loss:.4f}')
-    # print(f' xy: {epoch_xy_loss:.4f}, wh: {epoch_wh_loss:.4f}, class: {epoch_class_loss:.4f}, obj: {epoch_obj_loss:.4f}')
 
     return epoch_total_loss
 

@@ -2,6 +2,9 @@ import torch
 from utils import broadcast_iou, xywh_to_x1x2y1y2
 
 
+classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
+
+
 class Postprocess():
     def __init__(self, iou_threshold=0.5, score_threshold=0.5, max_detection=100):
         super(Postprocess, self).__init__()
@@ -78,6 +81,6 @@ class Postprocess():
         valid_count = torch.cat(valid_count, dim=0)
         final_result = torch.cat(final_result, dim=0)
 
-        nms_boxes, nms_scores, nms_classes = torch.split(final_result, [4, 1, final_result.size(-1)], dim=-1)
+        nms_boxes, nms_scores, nms_classes = torch.split(final_result, [4, 1, final_result.size(-1) - 5], dim=-1)
 
         return nms_boxes, nms_scores, nms_classes, valid_count.int()
