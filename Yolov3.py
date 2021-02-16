@@ -129,24 +129,17 @@ class Yololoss(nn.Module):
         pred_box_abs = xywh_to_x1x2y1y2(pred_box_abs)
         pred_xy_rel = pred_box_rel[..., 0:2]
         pred_wh_rel = pred_box_rel[..., 2:4]
-        # print(f'pred_box_abs: {pred_box_abs.shape}')
-        # print(f'pred_xy_rel: {pred_xy_rel.shape}')
-        # print(f'pred_wh_rel: {pred_wh_rel.shape}')
 
         # loss 계산에 필요
         true_box_rel, true_obj, true_class, true_box_abs = get_relative_yolo_box(y_true,
                                                                                  self.valid_anchors_wh,
                                                                                  self.num_classes)
 
-        print(true_obj.shape)
         true_box_abs = xywh_to_x1x2y1y2(true_box_abs)
         true_xy_rel = true_box_rel[..., 0:2]
         true_wh_rel = true_box_rel[..., 2:4]
 
         true_wh_abs = true_box_abs[..., 2:4]
-        # print(f'true_box_abs: {true_box_abs.shape}')
-        # print(f'true_box_rel: {true_box_rel.shape}')
-        # print(f'true_obj_rel: {true_obj.shape}')
 
         # w, h를 통해 작은 box detect를 위한 조정
         weight = 2 - true_wh_abs[..., 0] * true_wh_abs[..., 1]
@@ -155,14 +148,8 @@ class Yololoss(nn.Module):
         wh_loss = self.calc_xywh_loss(true_wh_rel, pred_wh_rel, true_obj, weight)
         class_loss = self.calc_class_loss(true_obj, true_class, pred_class)
         ignore_mask = self.calc_ignore_mask(true_box_abs, pred_box_abs, true_obj)
-        # print(f'ignore_mask: {ignore_mask.shape}')
         obj_loss = self.calc_obj_loss(true_obj, pred_obj, ignore_mask)
 
-        # print(f'xy_loss : {xy_loss}')
-        # print(f'wh_loss : {wh_loss}')
-        # print(f'class_loss : {class_loss}')
-        # print(f'ignore_mask : {ignore_mask}')
-        print(f'obj_loss : {obj_loss}')
         return xy_loss + wh_loss + class_loss + obj_loss, (xy_loss, wh_loss, class_loss, obj_loss)
 
     def calc_xywh_loss(self, true, pred, true_obj, weight):
@@ -173,47 +160,61 @@ class Yololoss(nn.Module):
 
         return loss
 
+    # def calc_ignore_mask(self, true_box, pred_box, true_obj):
+    #     # obj_mask = torch.squeeze(true_obj, dim=-1)
+    #     obj_mask = true_obj
+    #     best_iou = []
+    #     print(pred_box.shape, true_box.shape, obj_mask.shape)
+    #
+    #     for x in zip(pred_box, true_box, obj_mask):
+    #         # obj_mask가 true(1)인 true_box만 mask에 넣는다.
+    #         # masks = x[1][x[2].bool()]
+    #         masks = torch.masked_select(x[1], x[2].bool())
+    #
+    #         if masks.size(0) is not 0:
+    #             for mask in masks:
+    #                 best_iou.append(broadcast_iou(x[0], mask))
+    #         else:
+    #             best_iou.append(torch.zeros(true_box.shape[1:4]).cuda())
+    #
+    #     best_iou = torch.stack(best_iou)
+    #
+    #     ignore_mask = (best_iou < self.ignore_thresh).float()
+    #     ignore_mask = ignore_mask.unsqueeze(-1)
+    #
+    #     # ignore_mask = 0이면 무시 / 1이면 안무시
+    #     return ignore_mask
+
     def calc_ignore_mask(self, true_box, pred_box, true_obj):
-        # true_box, pred_box는 [xmin, ymin, xmax, ymax]
-        obj_mask = torch.squeeze(true_obj, dim=-1)
+        true_box_shape = true_box.shape
+        pred_box_shape = pred_box.shape
 
-        # print(f'true: {true_box.shape}')
-        # print(f'pred: {pred_box.shape}')
-        # print(f't_obj: {obj_mask}')
+        true_box = torch.reshape(true_box, [true_box_shape[0], -1, 4])
+        true_box = torch.sort(true_box, dim=1, descending=True).values
+        # true_box = true_box[:, 0:100, :]
 
-        best_iou = []
-        for x in zip(pred_box, true_box, obj_mask):
-            # obj_mask가 true(1)인 true_box만 mask에 넣는다.
-            masks = x[1][x[2].bool()]
-            # print(f'mask: {masks}')
-            # print(f'true_box: {true_box.shape}')
+        pred_box = torch.reshape(pred_box, [pred_box_shape[0], -1, 4])
 
-            if masks.size(0) is not 0:
-                # for mask in masks:
-                    # print(f'predbox: {x[0].shape}')
-                    # print(f'truebox: {mask.shape}')
-                best_iou.append(broadcast_iou(x[0], masks))
-            else:
-                best_iou.append(torch.zeros(true_box.shape[1:4]).cuda())
+        iou = broadcast_iou(pred_box, true_box)
 
-        best_iou = torch.stack(best_iou)
+        # tensorflow 코드에서는 reduce_max를 해야하는데 여기선 필요 없나?
+        # https://github.com/ethanyanjiali/deep-vision/blob/master/YOLO/tensorflow/yolov3.py#L462
+        # best_iou = torch.max(iou, dim=-1).values
+        best_iou = iou
+        best_iou = torch.reshape(best_iou, [pred_box_shape[0], pred_box_shape[1], pred_box_shape[2], pred_box_shape[3]])
 
         ignore_mask = (best_iou < self.ignore_thresh).float()
-        ignore_mask = ignore_mask.unsqueeze(-1)
+        ignore_mask = torch.unsqueeze(ignore_mask, dim=-1)
 
-        # ignore_mask = 0이면 무시 / 1이면 안무시
         return ignore_mask
 
     def calc_obj_loss(self, true_obj, pred_obj, ignore_mask):
-        print(f'calc_obj_loss {"=" * 100}')
         obj_entropy = self.binary_cross_entropy(pred_obj, true_obj)
         obj_loss = obj_entropy * true_obj
         noobj_loss = (1 - true_obj) * obj_entropy * ignore_mask
 
         obj_loss = torch.sum(obj_loss, dim=(1, 2, 3, 4))
         noobj_loss = torch.sum(noobj_loss, dim=(1, 2, 3, 4)) * self.lambda_noobj
-
-        print()
 
         return obj_loss + noobj_loss
 
@@ -261,7 +262,7 @@ def main():
 
         total_loss, each_loss = loss1(label[2], y_pred[2])
 
-        print(total_loss)
+        print(each_loss)
 
 
 if __name__ == '__main__':
