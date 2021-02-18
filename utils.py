@@ -14,7 +14,7 @@ def get_absolute_yolo_box(y_pred, valid_anchors_wh, num_classes):
 
     grid_size = y_pred.shape[1]
     grid_x, grid_y = torch.meshgrid(torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device),
-                          torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device))
+                                    torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device))
     C_xy = torch.stack((grid_y, grid_x), dim=-1).unsqueeze_(2)
 
     b_xy = b_xy + C_xy
@@ -33,7 +33,7 @@ def get_relative_yolo_box(y_true, valid_anchors_wh, num_classes):
 
     grid_size = y_true.shape[1]
     grid_x, grid_y = torch.meshgrid(torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device),
-                          torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device))
+                                    torch.arange(end=grid_size, dtype=torch.float, device=b_xy.device))
     C_xy = torch.stack((grid_y, grid_x), dim=-1).unsqueeze_(2)
 
     b_xy = y_true[..., 0:2]
