@@ -4,10 +4,11 @@ from torch.utils.data import DataLoader
 
 from Vgg16 import VGG16
 from Darkent53 import Darkconv, Darknet53
-from utils import get_absolute_yolo_box, get_relative_yolo_box, xywh_to_x1x2y1y2, broadcast_iou
+from utils import get_absolute_yolo_box, get_relative_yolo_box, \
+    xywh_to_x1x2y1y2, broadcast_iou, broadcast_ioutf
 from preprocess import CustomDataset
 
-
+idx = [9, 4, 2]
 anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
                            [116, 90], [156, 198], [373, 326]]).float().cuda() / 416
@@ -122,6 +123,9 @@ class Yololoss(nn.Module):
         self.lambda_noobj = lambda_noobj
 
     def forward(self, y_true, y_pred):
+
+        # print(y_true[0][idx[0]][idx[1]][idx[2]][:5])
+        # print(y_pred[0][idx[0]][idx[1]][idx[2]][:5])
         # iou, ignore_mask 계산에 필요
         pred_box_abs, pred_obj, pred_class, pred_box_rel = get_absolute_yolo_box(y_pred,
                                                                                  self.valid_anchors_wh,
@@ -186,6 +190,7 @@ class Yololoss(nn.Module):
     #     return ignore_mask
 
     def calc_ignore_mask(self, true_box, pred_box, true_obj):
+        # (batch, 13, 13, 3, 4)
         true_box_shape = true_box.shape
         pred_box_shape = pred_box.shape
 
@@ -193,16 +198,19 @@ class Yololoss(nn.Module):
         true_box = torch.sort(true_box, dim=1, descending=True).values
         # true_box = true_box[:, 0:100, :]
 
+        # pred_box, true_box shape : (batch, 507, 4)
         pred_box = torch.reshape(pred_box, [pred_box_shape[0], -1, 4])
 
-        iou = broadcast_iou(pred_box, true_box)
+        # (batch, 507. 507)
+        iou = broadcast_ioutf(pred_box, true_box)
 
         # tensorflow 코드에서는 reduce_max를 해야하는데 여기선 필요 없나?
         # https://github.com/ethanyanjiali/deep-vision/blob/master/YOLO/tensorflow/yolov3.py#L462
-        # best_iou = torch.max(iou, dim=-1).values
-        best_iou = iou
+        best_iou = torch.max(iou, dim=-1).values
+        # best_iou = iou
         best_iou = torch.reshape(best_iou, [pred_box_shape[0], pred_box_shape[1], pred_box_shape[2], pred_box_shape[3]])
 
+        # (batch, 13, 13, 3, 1)
         ignore_mask = (best_iou < self.ignore_thresh).float()
         ignore_mask = torch.unsqueeze(ignore_mask, dim=-1)
 
@@ -243,9 +251,10 @@ def main():
 
     model = YoloV3(num_classes).cuda()
 
-    # outputs = model(inputs, training=False)
-    # y_small, y_medium, y_large = outputs
-    # print(y_small[0].shape)
+    outputs = model(inputs, training=True)
+    y_small, y_medium, y_large = outputs
+    print(y_large.shape)
+    print(y_medium.shape)
     # print(y_small[1].shape)
     # print(y_small[2].shape)
     # print(y_small[3].shape)
@@ -255,14 +264,14 @@ def main():
 
     loss1 = Yololoss(num_classes, anchors_wh_mask[2]).cuda()
 
-    for batch, data in enumerate(dataloader):
-        image, label = data
-        # print(label.shape)
-        y_pred = model(image.cuda(), training=True)
-
-        total_loss, each_loss = loss1(label[2], y_pred[2])
-
-        print(each_loss)
+    # for batch, data in enumerate(dataloader):
+    #     image, label = data
+    #     # print(label.shape)
+    #     y_pred = model(image.cuda(), training=True)
+    #
+    #     total_loss, each_loss = loss1(label[2], y_pred[2])
+    #
+    #     print(each_loss)
 
 
 if __name__ == '__main__':

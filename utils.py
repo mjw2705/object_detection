@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 
 # 예측한 상대좌표를 절대좌표로
@@ -80,4 +81,37 @@ def broadcast_iou(box1, box2):
     box_2_area = (box_2[..., 2] - box_2[..., 0]) * \
                  (box_2[..., 3] - box_2[..., 1])
 
-    return intersec_area / (box_1_area + box_2_area - intersec_area)
+    iou = intersec_area / (box_1_area + box_2_area - intersec_area)
+
+    return iou
+
+
+def broadcast_ioutf(box1, box2):
+    # (batch, 507, 1, 4)
+    box_1 = torch.unsqueeze(box1, dim=-2)
+    # (batch, 1, 507, 4)
+    box_2 = torch.unsqueeze(box2, dim=-3)
+    # (batch, 507, 507, 4)
+    boxa, boxb = torch.broadcast_tensors(box_1, box_2)
+
+    al, at, ar, ab = torch.chunk(boxa, 4, dim=-1)
+    bl, bt, br, bb = torch.chunk(boxb, 4, dim=-1)
+
+    left = torch.maximum(al, bl)
+    right = torch.maximum(ar, br)
+    top = torch.maximum(at, bt)
+    bottom = torch.maximum(ab, bb)
+
+    iw = torch.clamp(right - left, min=0, max=1)
+    ih = torch.clamp(bottom - top, min=0, max=1).cuda()
+
+    intersect = iw * ih
+    area_a = (ar - al) * (ab - at)
+    area_b = (br - bl) * (bb - bt)
+    union = area_a + area_b - intersect
+
+    iou = torch.squeeze(intersect / union + 1e-7, dim=-1)
+
+    return iou
+
+

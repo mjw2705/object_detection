@@ -10,7 +10,7 @@ for set in ['train', 'val']:
     with open(f'{DB_path}/ImageSets/Main/{set}.txt', 'r') as f:
         file_id = f.read().strip().split()
 
-    f = open(f'2007_{set}.csv', 'w', encoding='utf-8', newline='')
+    f = open(f'2007diff_{set}.csv', 'w', encoding='utf-8', newline='')
     writer = csv.writer(f)
     writer.writerow(['img_path', 'img_size', 'Bbox', 'class'])
 
@@ -32,7 +32,8 @@ for set in ['train', 'val']:
 
         for obj in root.iter('object'):
             cls = obj.find('name').text
-            if cls not in classes:
+            diff = obj.find('difficult').text
+            if cls not in classes or int(diff) == 1:
                 continue
             cls_id = classes.index(cls)
             bndbox = obj.find('bndbox')
