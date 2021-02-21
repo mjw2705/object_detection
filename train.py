@@ -23,13 +23,13 @@ def main():
 
     # # 학습했던 모델 불러오기
     saved_pth_dir = './models'
-    pth_file = '4544_0.1861.pth'
+    pth_file = '99_2472.1938.pth'
 
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if torch.cuda.is_available() else torch.device('cpu'))
 
     num_classes = 20
-    lr_rate = 0.00001
+    lr_rate = 0.001
     pre_train = False
 
     dataset = CustomDataset(DB_path, csv_file, num_classes)
@@ -47,10 +47,10 @@ def main():
         lowest_loss = state['loss']
     else:
         init_epoch = 0
-        lowest_loss = 900
+        lowest_loss = 0.1
 
-    print(f'init_epoch: {init_epoch}')
-    print(f'lowest_loss: {lowest_loss}')
+    # print(f'init_epoch: {init_epoch}')
+    # print(f'lowest_loss: {lowest_loss}')
 
     for epoch in range(init_epoch, EPOCH):
         model.train()
@@ -70,6 +70,14 @@ def main():
 
         if lowest_loss < 0.00001:
             break
+
+    state = {'epoch': epoch,
+             'model_state_dict': model.state_dict(),
+             'optimizer_state_dict': optimizer.state_dict(),
+             'loss': epoch_total_loss}
+    file_path = pth_dir + f'{epoch}_{epoch_total_loss:.4f}.pth'
+    torch.save(state, file_path)
+    print(f'Save model_ [loss : {epoch_total_loss:.4f}, save_path : {file_path}]')
 
 
 def train_one_epoch(model, loss_object, dataloader, optimizer, use_cuda):
