@@ -203,41 +203,5 @@ class Yololoss(nn.Module):
 
         return class_loss
 
-def main():
-    # DB_path = './data/VOC2007_trainval'
-    # csv_file = '2007_train.csv'
-    DB_path = './data/ex'
-    csv_file = 'ex_train.csv'
-
-    inputs = torch.randn(1, 3, 416, 416).cuda()
-    num_classes = 20
-
-    model = YoloV3(num_classes).cuda()
-
-    outputs = model(inputs, training=True)
-    y_small, y_medium, y_large = outputs
-    print(y_large.shape)
-    print(y_medium.shape)
-    # print(y_small[1].shape)
-    # print(y_small[2].shape)
-    # print(y_small[3].shape)
-
-    dataset = CustomDataset(DB_path=DB_path, csv_file=csv_file, num_classes=num_classes)
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
-
-    loss1 = Yololoss(num_classes, anchors_wh_mask[2]).cuda()
-
-    # for batch, data in enumerate(dataloader):
-    #     image, label = data
-    #     # print(label.shape)
-    #     y_pred = model(image.cuda(), training=True)
-    #
-    #     total_loss, each_loss = loss1(label[2], y_pred[2])
-    #
-    #     print(each_loss)
-
-
-if __name__ == '__main__':
-    main()
 
 
