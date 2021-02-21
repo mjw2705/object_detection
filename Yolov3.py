@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from Vgg16 import VGG16
-from Darkent53 import Darkconv, Darknet53
+from Darknet53 import Darkconv, Darknet53
 from utils import get_absolute_yolo_box, get_relative_yolo_box, \
     xywh_to_x1x2y1y2, broadcast_iou, broadcast_ioutf
 from preprocess import CustomDataset

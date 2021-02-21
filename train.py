@@ -15,7 +15,6 @@ EPOCH = 1000
 def main():
     # DB_path = './data/VOC2007_trainval/'
     # csv_file = '2007_train.csv'
-
     DB_path = './data/ex'
     csv_file = 'ex_train.csv'
 
@@ -23,7 +22,7 @@ def main():
 
     # # 학습했던 모델 불러오기
     saved_pth_dir = './models'
-    pth_file = '99_2472.1938.pth'
+    pth_file = '999_0.8255.pth'
 
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if torch.cuda.is_available() else torch.device('cpu'))
@@ -100,8 +99,8 @@ def train_one_epoch(model, loss_object, dataloader, optimizer, use_cuda):
 
         total_losses, xy_losses, wh_losses, class_losses, obj_losses = [], [], [], [], []
 
-        for loss_object, y_pred, y_true in zip(loss_object, model_output, label):
-            total_loss, each_loss = loss_object(y_true, y_pred)
+        for loss_obj, y_pred, y_true in zip(loss_object, model_output, label):
+            total_loss, each_loss = loss_obj(y_true, y_pred)
             xy_loss, wh_loss, class_loss, obj_loss = each_loss
             total_losses.append(total_loss * (1. / BATCH_SIZE))
             xy_losses.append(xy_loss * (1. / BATCH_SIZE))
