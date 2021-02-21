@@ -10,7 +10,6 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn.functional as F
-import xml.etree.ElementTree as ET
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
@@ -21,8 +20,8 @@ anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
 
 # DB_path = './data/VOC2007_trainval/'
 # csv_file = '2007_train.csv'
-DB_path = './data/ex'
-csv_file = 'ex_train.csv'
+# DB_path = './data/ex'
+# csv_file = 'ex_train.csv'
 
 
 class CustomDataset(Dataset):
@@ -39,7 +38,7 @@ class CustomDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         try:
-            img_path = os.path.join(DB_path, self.label_csv.iloc[idx, 0])
+            img_path = os.path.join(self.DB_path, self.label_csv.iloc[idx, 0])
             image = cv2.resize(cv2.imread(img_path), self.output_shape) / 255
             image = torch.from_numpy(image).permute(2, 0, 1).float()
 
@@ -128,13 +127,14 @@ class CustomDataset(Dataset):
 
 
 if __name__=='__main__':
-    dataset = CustomDataset(DB_path, csv_file, 20)
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
-
-    for batch, data in enumerate(dataloader):
-        image, label = data
-
-        print(image.shape, label[0].shape, label[1].shape, label[2].shape)
+    pass
+    # dataset = CustomDataset(DB_path, csv_file, 20)
+    # dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+    #
+    # for batch, data in enumerate(dataloader):
+    #     image, label = data
+    #
+    #     print(image.shape, label[0].shape, label[1].shape, label[2].shape)
 
 
 

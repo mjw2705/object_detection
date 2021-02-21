@@ -13,10 +13,10 @@ EPOCH = 1000
 
 
 def main():
-    # DB_path = './data/VOC2007_trainval/'
-    # csv_file = '2007_train.csv'
-    DB_path = './data/ex'
-    csv_file = 'ex_train.csv'
+    DB_path = './data/VOC2007_trainval'
+    csv_file = '2007diff_train.csv'
+    # DB_path = './data/ex'
+    # csv_file = 'ex_train.csv'
 
     pth_dir = './models/'
 

@@ -1,14 +1,16 @@
+import numpy as np
+import cv2
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from Vgg16 import VGG16
 from Darknet53 import Darkconv, Darknet53
-from utils import get_absolute_yolo_box, get_relative_yolo_box, \
-    xywh_to_x1x2y1y2, broadcast_iou, broadcast_ioutf
+from utils import get_absolute_yolo_box, get_relative_yolo_box, xywh_to_x1x2y1y2, broadcast_iou
 from preprocess import CustomDataset
 
-idx = [9, 4, 2]
+
 anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
                            [116, 90], [156, 198], [373, 326]]).float().cuda() / 416
@@ -123,9 +125,6 @@ class Yololoss(nn.Module):
         self.lambda_noobj = lambda_noobj
 
     def forward(self, y_true, y_pred):
-
-        # print(y_true[0][idx[0]][idx[1]][idx[2]][:5])
-        # print(y_pred[0][idx[0]][idx[1]][idx[2]][:5])
         # iou, ignore_mask 계산에 필요
         pred_box_abs, pred_obj, pred_class, pred_box_rel = get_absolute_yolo_box(y_pred,
                                                                                  self.valid_anchors_wh,
@@ -133,21 +132,23 @@ class Yololoss(nn.Module):
         pred_box_abs = xywh_to_x1x2y1y2(pred_box_abs)
         pred_xy_rel = pred_box_rel[..., 0:2]
         pred_wh_rel = pred_box_rel[..., 2:4]
+        # print(f'pred_box_abs: {pred_box_abs.shape}')
+        # print(f'pred_xy_rel: {pred_xy_rel.shape}')
+        # print(f'pred_wh_rel: {pred_wh_rel.shape}')
 
         # loss 계산에 필요
-        # print('======', y_true[0][idx[0]][idx[1]][idx[2]][:5])
         true_box_rel, true_obj, true_class, true_box_abs = get_relative_yolo_box(y_true,
                                                                                  self.valid_anchors_wh,
                                                                                  self.num_classes)
-        # print(true_box_rel)
-        # print(true_box_rel[0][9][4][2])
-        # print(true_obj[0][9][4][2])
 
         true_box_abs = xywh_to_x1x2y1y2(true_box_abs)
         true_xy_rel = true_box_rel[..., 0:2]
         true_wh_rel = true_box_rel[..., 2:4]
 
         true_wh_abs = true_box_abs[..., 2:4]
+        # print(f'true_box_abs: {true_box_abs.shape}')
+        # print(f'true_box_rel: {true_box_rel.shape}')
+        # print(f'true_obj_rel: {true_obj.shape}')
 
         # w, h를 통해 작은 box detect를 위한 조정
         weight = 2 - true_wh_abs[..., 0] * true_wh_abs[..., 1]
@@ -156,8 +157,14 @@ class Yololoss(nn.Module):
         wh_loss = self.calc_xywh_loss(true_wh_rel, pred_wh_rel, true_obj, weight)
         class_loss = self.calc_class_loss(true_obj, true_class, pred_class)
         ignore_mask = self.calc_ignore_mask(true_box_abs, pred_box_abs, true_obj)
+        # print(f'ignore_mask: {ignore_mask.shape}')
         obj_loss = self.calc_obj_loss(true_obj, pred_obj, ignore_mask)
 
+        # print(f'xy_loss : {xy_loss}')
+        # print(f'wh_loss : {wh_loss}')
+        # print(f'class_loss : {class_loss}')
+        # print(f'ignore_mask : {ignore_mask}')
+        # print(f'obj_loss : {obj_loss}')
         return xy_loss + wh_loss + class_loss + obj_loss, (xy_loss, wh_loss, class_loss, obj_loss)
 
     def calc_xywh_loss(self, true, pred, true_obj, weight):
@@ -168,64 +175,35 @@ class Yololoss(nn.Module):
 
         return loss
 
-    # def calc_ignore_mask(self, true_box, pred_box, true_obj):
-    #     # obj_mask = torch.squeeze(true_obj, dim=-1)
-    #     obj_mask = true_obj
-    #     best_iou = []
-    #     print(pred_box.shape, true_box.shape, obj_mask.shape)
-    #
-    #     for x in zip(pred_box, true_box, obj_mask):
-    #         # obj_mask가 true(1)인 true_box만 mask에 넣는다.
-    #         # masks = x[1][x[2].bool()]
-    #         masks = torch.masked_select(x[1], x[2].bool())
-    #
-    #         if masks.size(0) is not 0:
-    #             for mask in masks:
-    #                 best_iou.append(broadcast_iou(x[0], mask))
-    #         else:
-    #             best_iou.append(torch.zeros(true_box.shape[1:4]).cuda())
-    #
-    #     best_iou = torch.stack(best_iou)
-    #
-    #     ignore_mask = (best_iou < self.ignore_thresh).float()
-    #     ignore_mask = ignore_mask.unsqueeze(-1)
-    #
-    #     # ignore_mask = 0이면 무시 / 1이면 안무시
-    #     return ignore_mask
-
     def calc_ignore_mask(self, true_box, pred_box, true_obj):
-        # (batch, 13, 13, 3, 4)
         true_box_shape = true_box.shape
         pred_box_shape = pred_box.shape
+        # print(f'true_box_shape : {true_box_shape}')
+        # print(f'pred_box_shape : {pred_box_shape}')
 
         true_box = torch.reshape(true_box, [true_box_shape[0], -1, 4])
         true_box = torch.sort(true_box, dim=1, descending=True).values
         # true_box = true_box[:, 0:100, :]
 
-        # pred_box, true_box shape : (batch, 507, 4)
         pred_box = torch.reshape(pred_box, [pred_box_shape[0], -1, 4])
 
-        # (batch, 507. 507)
+        # print(f'true_box.shape : {true_box.shape}')
+        # print(f'pred_box.shape : {pred_box.shape}')
         iou = broadcast_iou(pred_box, true_box)
-
+        # print(f'iou.shape : {iou.shape}')
         # tensorflow 코드에서는 reduce_max를 해야하는데 여기선 필요 없나?
         # https://github.com/ethanyanjiali/deep-vision/blob/master/YOLO/tensorflow/yolov3.py#L462
         # best_iou = torch.max(iou, dim=-1).values
         best_iou = iou
         best_iou = torch.reshape(best_iou, [pred_box_shape[0], pred_box_shape[1], pred_box_shape[2], pred_box_shape[3]])
-
-        # (batch, 13, 13, 3, 1)
         ignore_mask = (best_iou < self.ignore_thresh).float()
         ignore_mask = torch.unsqueeze(ignore_mask, dim=-1)
+        # print(f'ignore_mask.shape : {ignore_mask.shape}')
 
         return ignore_mask
 
     def calc_obj_loss(self, true_obj, pred_obj, ignore_mask):
-        # obj_entropy = self.binary_cross_entropy(pred_obj, true_obj)
-        # print('===', true_obj[0][9][4][2])
-        # print('===', pred_obj[0][9][4][2])
-        obj_entropy = nn.functional.binary_cross_entropy(pred_obj, true_obj)
-
+        obj_entropy = self.binary_cross_entropy(pred_obj, true_obj)
         obj_loss = obj_entropy * true_obj
         noobj_loss = (1 - true_obj) * obj_entropy * ignore_mask
 
@@ -249,37 +227,61 @@ class Yololoss(nn.Module):
 
 
 def main():
-    # DB_path = './data/VOC2007_trainval'
-    # csv_file = '2007_train.csv'
+    global np_image
     DB_path = './data/ex'
     csv_file = 'ex_train.csv'
 
-    inputs = torch.randn(1, 3, 416, 416).cuda()
+    EPOCH = 10000
+
     num_classes = 20
 
     model = YoloV3(num_classes).cuda()
 
-    outputs = model(inputs, training=True)
-    y_small, y_medium, y_large = outputs
-    print(y_large.shape)
-    print(y_medium.shape)
-    # print(y_small[1].shape)
-    # print(y_small[2].shape)
-    # print(y_small[3].shape)
-
     dataset = CustomDataset(DB_path=DB_path, csv_file=csv_file, num_classes=num_classes)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss1 = Yololoss(num_classes, anchors_wh_mask[2]).cuda()
 
-    # for batch, data in enumerate(dataloader):
-    #     image, label = data
-    #     # print(label.shape)
-    #     y_pred = model(image.cuda(), training=True)
-    #
-    #     total_loss, each_loss = loss1(label[2], y_pred[2])
-    #
-    #     print(each_loss)
+    cells = [[9, 4, 2], [9, 10, 1], [8, 1, 1], [4, 2, 1], [6, 4, 2], [6, 10, 1]]
+
+    for epoch in range(EPOCH):
+        model.train()
+        for batch, data in enumerate(dataloader):
+            image, label = data
+
+            optimizer.zero_grad()
+
+            y_pred = model(image.cuda(), training=True)
+
+            total_loss, each_loss = loss1(label[2], y_pred[2])
+            total_loss.backward()
+            optimizer.step()
+            print()
+            print(total_loss)
+
+            # 여기부터 이미지에 뿌려보는 부분 매 epoch 마다
+            y_pred_abs = model(image.cuda(), training=False)
+            abs_box_small, abs_box_medium, abs_box_large = y_pred_abs
+
+            np_image = image[0].permute(1, 2, 0).numpy()
+            np_image = cv2.cvtColor(np_image, cv2.COLOR_BGR2RGB)
+            np_image = cv2.cvtColor(np_image, cv2.COLOR_RGB2BGR)
+
+            pred_box_ab, objectness, classes, bbox_rel = abs_box_large
+
+            for cell in cells:
+                x, y, w, h = pred_box_ab[0][cell[0]][cell[1]][cell[2]]
+
+                xmin = int((x.item() - (w.item() / 2)) * 416)
+                ymin = int((y.item() - (h.item() / 2)) * 416)
+                xmax = int((x.item() + (w.item() / 2)) * 416)
+                ymax = int((y.item() + (h.item() / 2)) * 416)
+
+                np_image = cv2.rectangle(np_image, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (255, 0, 0), 1)
+
+            cv2.imshow('tt', np_image)
+            cv2.waitKey(5)
 
 
 if __name__ == '__main__':
