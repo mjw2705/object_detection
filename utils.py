@@ -103,7 +103,7 @@ def broadcast_ioutf(box1, box2):
     bottom = torch.maximum(ab, bb)
 
     iw = torch.clamp(right - left, min=0, max=1)
-    ih = torch.clamp(bottom - top, min=0, max=1).cuda()
+    ih = torch.clamp(bottom - top, min=0, max=1)
 
     intersect = iw * ih
     area_a = (ar - al) * (ab - at)
