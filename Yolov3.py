@@ -161,31 +161,6 @@ class Yololoss(nn.Module):
 
         return loss
 
-    # def calc_ignore_mask(self, true_box, pred_box, true_obj):
-    #     # obj_mask = torch.squeeze(true_obj, dim=-1)
-    #     obj_mask = true_obj
-    #     best_iou = []
-    #     print(pred_box.shape, true_box.shape, obj_mask.shape)
-    #
-    #     for x in zip(pred_box, true_box, obj_mask):
-    #         # obj_mask가 true(1)인 true_box만 mask에 넣는다.
-    #         # masks = x[1][x[2].bool()]
-    #         masks = torch.masked_select(x[1], x[2].bool())
-    #
-    #         if masks.size(0) is not 0:
-    #             for mask in masks:
-    #                 best_iou.append(broadcast_iou(x[0], mask))
-    #         else:
-    #             best_iou.append(torch.zeros(true_box.shape[1:4]).cuda())
-    #
-    #     best_iou = torch.stack(best_iou)
-    #
-    #     ignore_mask = (best_iou < self.ignore_thresh).float()
-    #     ignore_mask = ignore_mask.unsqueeze(-1)
-    #
-    #     # ignore_mask = 0이면 무시 / 1이면 안무시
-    #     return ignore_mask
-
     def calc_ignore_mask(self, true_box, pred_box, true_obj):
         # (batch, 13, 13, 3, 4)
         true_box_shape = true_box.shape
@@ -201,9 +176,6 @@ class Yololoss(nn.Module):
         # (batch, 507)
         iou = broadcast_iou(pred_box, true_box)
 
-        # tensorflow 코드에서는 reduce_max를 해야하는데 여기선 필요 없나?
-        # https://github.com/ethanyanjiali/deep-vision/blob/master/YOLO/tensorflow/yolov3.py#L462
-        # best_iou = torch.max(iou, dim=-1).values
         best_iou = iou
         best_iou = torch.reshape(best_iou, [pred_box_shape[0], pred_box_shape[1], pred_box_shape[2], pred_box_shape[3]])
 
