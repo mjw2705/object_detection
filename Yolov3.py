@@ -8,7 +8,7 @@ from utils import get_absolute_yolo_box, get_relative_yolo_box, \
     xywh_to_x1x2y1y2, broadcast_iou, broadcast_ioutf
 from preprocess import CustomDataset
 
-idx = [9, 4, 2]
+
 anchors_wh = torch.tensor([[10, 13], [16, 30], [33, 23],
                            [30, 61], [62, 45], [59, 119],
                            [116, 90], [156, 198], [373, 326]]).float().cuda() / 416
@@ -123,9 +123,6 @@ class Yololoss(nn.Module):
         self.lambda_noobj = lambda_noobj
 
     def forward(self, y_true, y_pred):
-
-        # print(y_true[0][idx[0]][idx[1]][idx[2]][:5])
-        # print(y_pred[0][idx[0]][idx[1]][idx[2]][:5])
         # iou, ignore_mask 계산에 필요
         pred_box_abs, pred_obj, pred_class, pred_box_rel = get_absolute_yolo_box(y_pred,
                                                                                  self.valid_anchors_wh,
@@ -202,12 +199,12 @@ class Yololoss(nn.Module):
         pred_box = torch.reshape(pred_box, [pred_box_shape[0], -1, 4])
 
         # (batch, 507. 507)
-        iou = broadcast_ioutf(pred_box, true_box)
+        iou = broadcast_iou(pred_box, true_box)
 
         # tensorflow 코드에서는 reduce_max를 해야하는데 여기선 필요 없나?
         # https://github.com/ethanyanjiali/deep-vision/blob/master/YOLO/tensorflow/yolov3.py#L462
-        best_iou = torch.max(iou, dim=-1).values
-        # best_iou = iou
+        # best_iou = torch.max(iou, dim=-1).values
+        best_iou = iou
         best_iou = torch.reshape(best_iou, [pred_box_shape[0], pred_box_shape[1], pred_box_shape[2], pred_box_shape[3]])
 
         # (batch, 13, 13, 3, 1)
@@ -217,7 +214,8 @@ class Yololoss(nn.Module):
         return ignore_mask
 
     def calc_obj_loss(self, true_obj, pred_obj, ignore_mask):
-        obj_entropy = self.binary_cross_entropy(pred_obj, true_obj)
+        obj_entropy = nn.functional.binary_cross_entropy(pred_obj, true_obj)
+
         obj_loss = obj_entropy * true_obj
         noobj_loss = (1 - true_obj) * obj_entropy * ignore_mask
 
@@ -227,18 +225,11 @@ class Yololoss(nn.Module):
         return obj_loss + noobj_loss
 
     def calc_class_loss(self, true_obj, true_class, pred_class):
-        class_loss = self.binary_cross_entropy(pred_class, true_class)
+        class_loss = nn.functional.binary_cross_entropy(pred_class, true_class)
         class_loss = class_loss * true_obj
         class_loss = torch.sum(class_loss, dim=(1, 2, 3, 4))
 
         return class_loss
-
-    def binary_cross_entropy(self, logits, labels):
-        epsilon = 1e-7
-        logits = torch.clamp(logits, epsilon, 1 - epsilon)
-
-        return -(labels * torch.log(logits) + (1 - labels) * torch.log(logits))
-
 
 def main():
     # DB_path = './data/VOC2007_trainval'
