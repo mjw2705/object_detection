@@ -198,7 +198,7 @@ class Yololoss(nn.Module):
         # pred_box, true_box shape : (batch, 507, 4)
         pred_box = torch.reshape(pred_box, [pred_box_shape[0], -1, 4])
 
-        # (batch, 507. 507)
+        # (batch, 507)
         iou = broadcast_iou(pred_box, true_box)
 
         # tensorflow 코드에서는 reduce_max를 해야하는데 여기선 필요 없나?
