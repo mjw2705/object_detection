@@ -12,16 +12,13 @@ from postprocess import Postprocess
 
 classes_name = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
-DB_path = './data/ex'
-csv_file = 'ex_train.csv'
-
 saved_pth_dir = './models'
-pth_file = '999_0.8255.pth'
+pth_file = 'yolov3_voc2007_darknet.pth'
 
 num_classes = 20
 BATCH_SIZE = 1
 
-img = cv2.imread('./data/ex/JPEGImages/000023.jpg')
+img = cv2.imread('./data/VOC2007_trainval/JPEGImages/000017.jpg')
 img = cv2.resize(img, (416, 416))
 x = torch.from_numpy(img / 255).float().unsqueeze(0).permute(0, -1, 1, 2).cuda()
 
@@ -58,8 +55,8 @@ for n_img in range(num_img):
         ymax = int(box[3] * h)
 
         img = cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)
-        cv2.putText(img, class_value, (xmin+5, ymin+5),
-                    cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 2)
+        cv2.putText(img, class_value, (xmin+3, ymin+10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
 
     cv2.imshow('t', img)
     cv2.waitKey()
