@@ -6,7 +6,7 @@
 make annotation in csv - image path, image size, bounding box, classes 저장
 
 [Yolov3.py](https://github.com/mjw2705/object_detection/blob/master/Yolov3.py)
-Yolo model, Yolo loss
+Yolo model, Yolo loss  
 [Yolov3_tt.py](https://github.com/mjw2705/object_detection/blob/master/Yolov3_tt.py)
 Yolo model test
 
