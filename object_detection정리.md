@@ -135,7 +135,7 @@ Pyramidal feature hierarchy 구조
 4. detector & classifier 수행한 결과를 합해 NMS적용
 
 - class 예측에 softmax적용
-- 여전히 초반의 높은 해상도의 작은 객체를 찾는 정확도는 낮음
+- 여전히 초반의 높은 해상도의 작은 객체를 찾는 정확도는 낮음 → 보완한 모델이 FFESSD
 
 
 ## Yolov2
