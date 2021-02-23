@@ -28,7 +28,7 @@ non maximum suppression 적용
 final train  
 [train_test.py](https://github.com/mjw2705/object_detection/blob/master/train_test.py)
 train test  
-[train.py](https://github.com/mjw2705/object_detection/blob/master/train_each_epoch.py)
+[train_each_epoch.py](https://github.com/mjw2705/object_detection/blob/master/train_each_epoch.py)
 drawing bounding box on the image every epoch
 
 [inference.py](https://github.com/mjw2705/object_detection/blob/master/inference.py)
