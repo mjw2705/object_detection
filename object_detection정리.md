@@ -129,12 +129,13 @@ Pyramidal feature hierarchy 구조
 2. 다음 각 단계별로도 feature map 추출 : multi feature maps   
  → 19 x 19 x 1024, 10 x 10 x 512, 5 x 5 x 256, 3 x 3 x 256, 1 x 1 x 256
 3. 6개의 feature map에서 각각 detector & classifier 수행  
-   - 한 그리드마다 크기가 다른 Default box 계산 - anchor box와 같은 개념, 그리드 당 defalut box가 3개고, 5 x 5이면 default box 75개
+   - 한 그리드마다 크기가 다른 Default box(6개) 계산 - anchor box와 같은 개념, 그리드 당 defalut box가 3개고, 5 x 5이면 default box 75개
    - localization(Bounding box regression) 계산 - 각 default box의 x, y, w, h를 계산, 5 x 5이면 5 x 5 x 12
    - classification 계산 - 각 default box마다 클래스 계산, 총 클래스 20개이고 5 x 5이면 5 x 5 x (20 + 1(배경 클래스)) x default box (5 x 5 x 63)
 4. detector & classifier 수행한 결과를 합해 NMS적용
 
 - class 예측에 softmax적용
+- 여전히 초반의 높은 해상도의 작은 객체를 찾는 정확도는 낮음
 
 
 ## Yolov2
