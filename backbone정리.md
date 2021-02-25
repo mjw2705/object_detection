@@ -3,7 +3,7 @@
   - 기존 모델에서 layer가 깊어지면 Gradient Vanishing / exploding의 문제가 발생해 성능이 떨어지는 Degradation 발생
     - depth가 깊어질 수록 training-error가 높아짐
   - residual network 구조 (2 layer)  
-![resnet](./img/resnet.png)
+![resnet](./img/resnet.PNG)
       - skip connection 사용
       - 입력(x)과 출력(H(x))의 차이가 0이 되도록 학습
   
