@@ -2,6 +2,8 @@
 - backbone : [Darknet53](https://github.com/mjw2705/object_detection/blob/master/Darknet53.py)
 - dataset : VOC2007
 
+<img src="result.PNG" height="80%" width="80">
+
 [make_annotation_csv.py](https://github.com/mjw2705/object_detection/blob/master/make_annotation_csv.py)  
 make annotation in csv - image path, image size, bounding box, classes 저장
 
