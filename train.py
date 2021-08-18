@@ -9,7 +9,7 @@ from preprocess import CustomDataset
 
 
 BATCH_SIZE = 1
-EPOCH = 1000
+EPOCH = 10
 
 
 def main():

@@ -93,8 +93,8 @@ def train_one_epoch(model, loss_object, dataloader, optimizer, use_cuda):
 
         total_losses, xy_losses, wh_losses, class_losses, obj_losses = [], [], [], [], []
 
-        for loss_object, y_pred, y_true in zip(loss_object, model_output, label):
-            total_loss, each_loss = loss_object(y_true, y_pred)
+        for loss_obj, y_pred, y_true in zip(loss_object, model_output, label):
+            total_loss, each_loss = loss_obj(y_true, y_pred)
             xy_loss, wh_loss, class_loss, obj_loss = each_loss
             total_losses.append(total_loss * (1. / BATCH_SIZE))
             xy_losses.append(xy_loss * (1. / BATCH_SIZE))

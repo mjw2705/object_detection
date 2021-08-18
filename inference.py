@@ -13,7 +13,7 @@ from postprocess import Postprocess
 classes_name = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
 saved_pth_dir = './models'
-pth_file = 'yolov3_voc2007_darknet.pth'
+pth_file = '999_0.0198.pth'
 
 num_classes = 20
 BATCH_SIZE = 1
